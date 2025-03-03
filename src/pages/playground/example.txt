@@ -1,0 +1,182 @@
+let notOne: Sum<1, -1> = 1;
+
+
+type NumericString = '0123456789';
+type PositiveInfinity = 1e999;
+type NegativeInfinity = -1e999;
+type Numeric = number | bigint;
+type Zero = 0 | 0n;
+type IsEqual<A, B> =
+	(<G>() => G extends A & G | G ? 1 : 2) extends
+	(<G>() => G extends B & G | G ? 1 : 2)
+	? true
+	: false;
+type Or<A extends boolean, B extends boolean> = [A, B][number] extends false
+	? false
+	: true extends [IsEqual<A, true>, IsEqual<B, true>][number]
+	? true
+	: never;
+type And<A extends boolean, B extends boolean> = [A, B][number] extends true
+	? true
+	: true extends [IsEqual<A, false>, IsEqual<B, false>][number]
+		? false
+		: never;
+type IsNegative<T extends Numeric> = T extends Negative<T> ? true : false;
+type Negative<T extends Numeric> = T extends Zero ? never : `${T}` extends `-${string}` ? T : never;
+type TupleMax<A extends number[], Result extends number = NegativeInfinity> = number extends A[number]
+	? never :
+	A extends [infer F extends number, ...infer R extends number[]]
+		? GreaterThan<F, Result> extends true
+			? TupleMax<R, F>
+			: TupleMax<R, Result>
+		: Result;
+type TupleMin<A extends number[], Result extends number = PositiveInfinity> = number extends A[number]
+	? never
+	: A extends [infer F extends number, ...infer R extends number[]]
+		? LessThan<F, Result> extends true
+			? TupleMin<R, F>
+			: TupleMin<R, Result>
+		: Result;
+type GreaterThan<A extends number, B extends number> = number extends A | B
+	? never
+	: [
+		IsEqual<A, PositiveInfinity>, IsEqual<A, NegativeInfinity>,
+		IsEqual<B, PositiveInfinity>, IsEqual<B, NegativeInfinity>,
+	] extends infer R extends [boolean, boolean, boolean, boolean]
+		? Or<
+		And<IsEqual<R[0], true>, IsEqual<R[2], false>>,
+		And<IsEqual<R[3], true>, IsEqual<R[1], false>>
+		> extends true
+			? true
+			: Or<
+			And<IsEqual<R[1], true>, IsEqual<R[3], false>>,
+			And<IsEqual<R[2], true>, IsEqual<R[0], false>>
+			> extends true
+				? false
+				: true extends R[number]
+					? false
+					: [IsNegative<A>, IsNegative<B>] extends infer R extends [boolean, boolean]
+						? [true, false] extends R
+							? false
+							: [false, true] extends R
+								? true
+								: [false, false] extends R
+									? PositiveNumericStringGt<`${A}`, `${B}`>
+									: PositiveNumericStringGt<`${NumberAbsolute<B>}`, `${NumberAbsolute<A>}`>
+						: never
+		: never;
+type PositiveNumericStringGt<A extends string, B extends string> = A extends B
+	? false
+	: [BuildTuple<StringLength<A>, 0>, BuildTuple<StringLength<B>, 0>] extends infer R extends [readonly unknown[], readonly unknown[]]
+		? R[0] extends [...R[1], ...infer Remain extends readonly unknown[]]
+			? 0 extends Remain['length']
+				? SameLengthPositiveNumericStringGt<A, B>
+				: true
+			: false
+		: never;
+type SameLengthPositiveNumericStringGt<A extends string, B extends string> = A extends `${infer FirstA}${infer RestA}`
+	? B extends `${infer FirstB}${infer RestB}`
+		? FirstA extends FirstB
+			? SameLengthPositiveNumericStringGt<RestA, RestB>
+			: PositiveNumericCharacterGt<FirstA, FirstB>
+		: never
+	: false;
+type NumberAbsolute<N extends number> = `${N}` extends `-${infer StringPositiveN}` ? StringToNumber<StringPositiveN> : N;
+type StringLength<S extends string> = string extends S
+	? never
+	: StringToArray<S>['length'];
+type StringToArray<S extends string, Result extends string[] = []> = string extends S
+	? never
+	: S extends `${infer F}${infer R}`
+		? StringToArray<R, [...Result, F]>
+		: Result;
+type BuildTuple<L extends number, Fill = unknown, T extends readonly unknown[] = []> = number extends L
+	? Fill[]
+	: L extends T['length']
+		? T
+		: BuildTuple<L, Fill, [...T, Fill]>;
+type Sum<A extends number, B extends number> = number extends A | B
+	? number
+	: [
+		IsEqual<A, PositiveInfinity>, IsEqual<A, NegativeInfinity>,
+		IsEqual<B, PositiveInfinity>, IsEqual<B, NegativeInfinity>,
+	] extends infer R extends [boolean, boolean, boolean, boolean]
+	? Or<
+		And<IsEqual<R[0], true>, IsEqual<R[3], false>>,
+		And<IsEqual<R[2], true>, IsEqual<R[1], false>>
+	> extends true
+	? PositiveInfinity
+	: Or<
+		And<IsEqual<R[1], true>, IsEqual<R[2], false>>,
+		And<IsEqual<R[3], true>, IsEqual<R[0], false>>
+	> extends true
+	? NegativeInfinity
+	: true extends R[number]
+	? number
+	: ([IsNegative<A>, IsNegative<B>] extends infer R
+		? [false, false] extends R
+		? [...BuildTuple<A>, ...BuildTuple<B>]['length']
+		: [true, true] extends R
+		? number
+		: TupleMax<[NumberAbsolute<A>, NumberAbsolute<B>]> extends infer Max_
+		? TupleMin<[NumberAbsolute<A>, NumberAbsolute<B>]> extends infer Min_ extends number
+		? Max_ extends A | B
+		? Subtract<Max_, Min_>
+		: number
+		: never
+		: never
+		: never) & number
+	: never;
+type PositiveNumericCharacterGt<A extends string, B extends string> = NumericString extends `${infer HeadA}${A}${infer TailA}`
+	? NumericString extends `${infer HeadB}${B}${infer TailB}`
+		? HeadA extends `${HeadB}${infer _}${infer __}`
+			? true
+			: false
+		: never
+	: never;
+type StringToNumber<S extends string> = S extends `${infer N extends number}`
+	? N
+	: S extends 'Infinity'
+		? PositiveInfinity
+		: S extends '-Infinity'
+			? NegativeInfinity
+			: never;
+type LessThan<A extends number, B extends number> = number extends A | B
+	? never
+	: GreaterThanOrEqual<A, B> extends true ? false : true;
+type GreaterThanOrEqual<A extends number, B extends number> = number extends A | B
+	? never
+	: A extends B ? true : GreaterThan<A, B>;
+
+type Subtract<A extends number, B extends number> = number extends A | B
+	? number
+	: [
+		IsEqual<A, PositiveInfinity>, IsEqual<A, NegativeInfinity>,
+		IsEqual<B, PositiveInfinity>, IsEqual<B, NegativeInfinity>,
+	] extends infer R extends [boolean, boolean, boolean, boolean]
+		? Or<
+		And<IsEqual<R[0], true>, IsEqual<R[2], false>>,
+		And<IsEqual<R[3], true>, IsEqual<R[1], false>>
+		> extends true
+			? PositiveInfinity
+			: Or<
+			And<IsEqual<R[1], true>, IsEqual<R[3], false>>,
+			And<IsEqual<R[2], true>, IsEqual<R[0], false>>
+			> extends true
+				? NegativeInfinity
+				: true extends R[number]
+					? number
+					: [IsNegative<A>, IsNegative<B>] extends infer R
+						? [false, false] extends R
+							? BuildTuple<A> extends infer R
+								? R extends [...BuildTuple<B>, ...infer R]
+									? R['length']
+									: number
+								: never
+							: LessThan<A, B> extends true
+								? number
+								: [false, true] extends R
+									? Sum<A, NumberAbsolute<B>>
+									: Subtract<NumberAbsolute<B>, NumberAbsolute<A>>
+						: never
+		: never;
