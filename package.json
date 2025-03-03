@@ -1,0 +1,43 @@
+{
+  "name": "bolt-ts-website",
+  "version": "1.0.0",
+  "description": "A modern compiler product website",
+  "scripts": {
+    "dev": "rspack serve",
+    "build": "rspack build",
+    "start": "rspack serve --env production"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "i18next": "^24.2.2",
+    "i18next-browser-languagedetector": "^8.0.4",
+    "monaco-editor": "^0.52.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-i18next": "^15.4.1",
+    "react-router-dom": "^7.1.3",
+    "react-slick": "^0.30.3",
+    "react-syntax-highlighter": "^15.6.1",
+    "slick-carousel": "^1.8.1"
+  },
+  "devDependencies": {
+    "@rspack/cli": "^1.2.2",
+    "@rspack/core": "^1.2.2",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.10",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@types/react-slick": "^0.23.13",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "autoprefixer": "^10.4.20",
+    "css-loader": "^7.1.2",
+    "postcss": "^8.5.1",
+    "postcss-loader": "^8.1.1",
+    "style-loader": "^4.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.3"
+  }
+}
