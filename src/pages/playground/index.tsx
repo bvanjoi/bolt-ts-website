@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import Editor from "@monaco-editor/react";
 import type { editor } from 'monaco-editor';
 import { useTranslation } from 'react-i18next';
-import boltts, { compile } from '/Users/bytedance/bolt-ts/crates/wasm/pkg/bolt_ts_wasm.js';
+import { type FileData, defaultFiles, newFile } from './defaultCase';
+import { CodeCard } from './codeCard';
+import boltts, { compile } from '/Users/zhangbohan/bolt-ts/crates/wasm/pkg/bolt_ts_wasm.js';
 
 interface CompilerOptions {
   target: string;
@@ -15,50 +16,15 @@ interface CompilerOptions {
   forceConsistentCasingInFileNames?: boolean;
 }
 
-interface FileData {
-  id: string;
-  name: string;
-  path: string;
-  content: string;
-  language: string;
-}
-
-const initialFiles: FileData[] = [
-  {
-    id: 'file1',
-    name: "index.ts",
-    path: "/index.ts",
-    language: "typescript",
-    content: `function greeting(name: string): string {
-  return \`Hello, \${name}!\`;
-}
-greeting(42);
-`
-  },
-  {
-    id: 'file2',
-    name: "tsconfig.json",
-    path: "/tsconfig.json",
-    language: "json",
-    content: `{
-  "compilerOptions": {
-    "strict": true
-  },
-  "include": ["./index.ts"],
-  "exclude": ["node_modules"]
-}`
-  }
-];
-
 const PlaygroundPage: React.FC = () => {
   const { t } = useTranslation();
 
-  const [files, setFiles] = useState<FileData[]>(initialFiles);
+  const [files, setFiles] = useState<FileData[]>(defaultFiles);
   const [output, setOutput] = useState<string>('');
   const [jsOutput, setJsOutput] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'output' | 'js' | 'definitions'>('output');
-  const [activeFileForJs, setActiveFileForJs] = useState<string>(initialFiles[0].id);
+  const [activeFileForJs, setActiveFileForJs] = useState<string>(defaultFiles[0].id);
   const [compilerOptions, setCompilerOptions] = useState<CompilerOptions>({
     target: 'ES2015',
     module: 'ESNext',
@@ -74,7 +40,7 @@ const PlaygroundPage: React.FC = () => {
 
   useEffect(() => {
     boltts()
-  }, [])
+  }, []);
 
   // Update all models in Monaco when files change
   useEffect(() => {
@@ -111,87 +77,7 @@ const PlaygroundPage: React.FC = () => {
     }
   }, [files]);
 
-  // Set up editor for each file
-  const handleEditorDidMount = (editorInstance: editor.IStandaloneCodeEditor, monaco: any, fileId: string) => {
-    // Store editor reference
-    editorsRef.current.set(fileId, editorInstance);
-
-    // Store monaco reference
-    if (!monacoRef.current) {
-      monacoRef.current = monaco;
-
-      // Set up TypeScript language service
-      if (monaco.languages.typescript) {
-        monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-          target: monaco.languages.typescript.ScriptTarget.ES2015,
-          allowNonTsExtensions: true,
-          moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-          module: monaco.languages.typescript.ModuleKind.ESNext,
-          noEmit: false,
-          esModuleInterop: true,
-          jsx: monaco.languages.typescript.JsxEmit.React,
-          reactNamespace: 'React',
-          allowJs: true,
-          typeRoots: ["node_modules/@types"]
-        });
-
-        // Add all TS files to the compiler
-        files.forEach(file => {
-          if (file.language === 'typescript') {
-            monaco.languages.typescript.typescriptDefaults.addExtraLib(
-              file.content,
-              `file:${file.path}`
-            );
-          }
-        });
-      }
-    }
-
-    // Get file URI
-    const file = files.find(f => f.id === fileId);
-    if (file) {
-      const uri = monaco.Uri.parse(`file:${file.path}`);
-      let model = monaco.editor.getModel(uri);
-
-      if (!model) {
-        // Create model if it doesn't exist
-        model = monaco.editor.createModel(file.content, file.language, uri);
-      }
-
-      // Set model for this editor
-      editorInstance.setModel(model);
-    }
-
-    // Update file content when editor content changes
-    editorInstance.onDidChangeModelContent(() => {
-      const fileIndex = files.findIndex(f => f.id === fileId);
-      if (fileIndex !== -1) {
-        const updatedFiles = [...files];
-        const newContent = editorInstance.getValue();
-
-        updatedFiles[fileIndex] = {
-          ...updatedFiles[fileIndex],
-          content: newContent
-        };
-
-        setFiles(updatedFiles);
-
-        // Update TypeScript language service
-        if (monacoRef.current && monacoRef.current.languages.typescript &&
-          updatedFiles[fileIndex].language === 'typescript') {
-          monacoRef.current.languages.typescript.typescriptDefaults.addExtraLib(
-            newContent,
-            `file:${updatedFiles[fileIndex].path}`
-          );
-        }
-
-        // If this is the active file for JS output, update JS output
-        if (fileId === activeFileForJs) {
-          generateJsOutput(newContent, fileId);
-        }
-      }
-    });
-  };
+  
 
   // Generate JS output for a specific file
   const generateJsOutput = (content: string, fileId: string) => {
@@ -210,7 +96,7 @@ const PlaygroundPage: React.FC = () => {
               setJsOutput(result.outputFiles[0].text);
             } else {
               // Fallback to a simple transformation if compilation fails
-              setJsOutput(`// Transpiled from ${file.name}\n${content
+              setJsOutput(`// Transpiled from ${file.path}\n${content
                 .replace(/export\s+interface\s+([a-zA-Z0-9_]+)\s*\{[^}]*\}/g, '// Interface removed')
                 .replace(/:\s*[a-zA-Z0-9_<>|&]+/g, '')
                 .replace(/export\s+/g, '')}`);
@@ -219,23 +105,15 @@ const PlaygroundPage: React.FC = () => {
         });
       } catch (error) {
         console.error("Error generating JS:", error);
-        setJsOutput(`// Error generating JS output for ${file.name}`);
+        setJsOutput(`// Error generating JS output for ${file.path}`);
       }
     }
   };
 
   // Add a new file
   const addNewFile = () => {
-    const newId = `file${Date.now()}`;
-    const newFile: FileData = {
-      id: newId,
-      name: `file${files.length + 1}.ts`,
-      path: `/file${files.length + 1}.ts`,
-      language: "typescript",
-      content: "// Add your code here"
-    };
-
-    setFiles([...files, newFile]);
+    const next = newFile(`/file${files.length + 1}.ts`, "// Add your code here", "typescript");
+    setFiles([...files, next]);
   };
 
   // Delete a file
@@ -279,7 +157,6 @@ const PlaygroundPage: React.FC = () => {
 
       updatedFiles[fileIndex] = {
         ...updatedFiles[fileIndex],
-        name: newName,
         path: newPath
       };
 
@@ -331,11 +208,10 @@ const PlaygroundPage: React.FC = () => {
   const runCode = () => {
     setIsLoading(true);
 
-    let files = Object.fromEntries(initialFiles.map((f) => [f.path, f.content]))
-    files['/lib.es5.d.ts'] = require('./es5.txt');
-    console.log(files);
+    let compileFiles = Object.fromEntries(files.map((f) => [f.path, f.content]))
+    compileFiles['/lib.es5.d.ts'] = require('./es5.txt');
     type Output = Record<string, string> | [string, [number, number], [number, number], number][];
-    const output: Output = compile('/', files);
+    const output: Output = compile('/', compileFiles);
     if (Array.isArray(output)) {
       let msg = output.map(item => {
         let filename = item[0];
@@ -348,7 +224,8 @@ const PlaygroundPage: React.FC = () => {
       }).join('\n');
       setOutput(msg)
     } else {
-      setJsOutput("hello world")
+      setOutput('no errors found');
+      // setJsOutput("hello world")
     }
     setIsLoading(false)
     // try {
@@ -464,16 +341,6 @@ const PlaygroundPage: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3">
-          <button
-            onClick={addNewFile}
-            className="bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-sm cursor-pointer flex items-center"
-          >
-            <svg className="mr-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Add File
-          </button>
-
           <button className="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-sm cursor-pointer">
             {t('share')}
           </button>
@@ -483,95 +350,39 @@ const PlaygroundPage: React.FC = () => {
       <div className="flex h-[calc(100vh-56px)]">
         {/* Left side - File cards */}
         <div className="w-1/2 flex flex-col border-r border-gray-700">
-          {/* 创建一个固定的滚动容器 */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
+          {/* Make scrolling explicitly enabled on this container */}
+          <div 
+            className="flex-1 overflow-y-auto overflow-x-hidden p-4"
+            onWheel={(e) => {
+              // Ensure the wheel event properly scrolls this container
+              const container = e.currentTarget;
+              const { scrollTop, scrollHeight, clientHeight } = container;
+              
+              // Check if we're at the top or bottom of scroll
+              const isAtTop = scrollTop === 0;
+              const isAtBottom = scrollTop + clientHeight >= scrollHeight;
+              
+              // Only prevent default if we can scroll in the direction of the wheel
+              if ((e.deltaY < 0 && !isAtTop) || (e.deltaY > 0 && !isAtBottom)) {
+                e.stopPropagation();
+              }
+            }}
+          >
             <div className="space-y-4 pb-4">
-              {files.map((file) => (
-                <div
-                  id={`file-card-${file.id}`}
-                  key={file.id}
-                  className={`bg-gray-800 rounded-md border border-gray-700 overflow-hidden flex flex-col mb-6 ${activeTab === 'js' && activeFileForJs === file.id ? 'ring-2 ring-blue-500' : ''}`}
-                  onClick={() => handleFileCardClick(file.id)}
-                >
-                  <div className="bg-gray-700 px-3 py-2 flex justify-between items-center">
-                    <input
-                      type="text"
-                      value={file.name}
-                      onChange={(e) => updateFileName(file.id, e.target.value)}
-                      className="bg-transparent border-b border-transparent hover:border-gray-500 focus:border-blue-500 focus:outline-none px-1 py-0.5 text-sm font-medium"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    {files.length > 1 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteFile(file.id);
-                        }}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                  <div className="relative w-full" style={{
-                    minHeight: "16rem",
-                    visibility: "visible",
-                    overflow: "hidden"
-                  }}>
-                    <Editor
-                      height="100%"
-                      defaultLanguage={file.language}
-                      defaultValue={file.content}
-                      theme="vs-dark"
-                      onMount={(editor, monaco) => {
-                        handleEditorDidMount(editor, monaco, file.id);
-
-                        // 立即调整初始高度
-                        setTimeout(() => {
-                          const contentHeight = editor.getContentHeight();
-                          const container = editor.getContainerDomNode();
-                          const parent = container.parentElement;
-                          if (parent) {
-                            parent.style.height = `${Math.max(contentHeight + 10, 256)}px`;
-                          }
-
-                          // 强制编辑器重新布局
-                          editor.layout();
-                        }, 100);
-
-                        // 监听编辑器内容变化以调整高度
-                        editor.onDidChangeModelContent(() => {
-                          const contentHeight = editor.getContentHeight();
-                          const container = editor.getContainerDomNode();
-                          const parent = container.parentElement;
-                          if (parent) {
-                            parent.style.height = `${Math.max(contentHeight + 10, 256)}px`;
-                          }
-                        });
-                      }}
-                      options={{
-                        minimap: { enabled: false },
-                        formatOnType: true,
-                        formatOnPaste: true,
-                        automaticLayout: true,
-                        scrollBeyondLastLine: false,
-                        fontSize: 14,
-                        tabSize: 2,
-                        wordWrap: 'on',
-                        lineNumbers: 'on',
-                      }}
-                      onChange={(value) => {
-                        if (activeTab === 'js' && activeFileForJs === file.id && value) {
-                          generateJsOutput(value, file.id);
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-
+              {files.map((file) => <CodeCard 
+                key={file.id} 
+                files={files}
+                file={file} 
+                activeTab={activeTab} 
+                activeFileForJs={activeFileForJs} 
+                handleFileCardClick={handleFileCardClick} 
+                updateFileName={updateFileName} 
+                deleteFile={deleteFile}
+                generateJsOutput={generateJsOutput}
+                editorsRef={editorsRef}
+                monacoRef={monacoRef}
+                setFiles={setFiles}
+              />)}
               {/* 新增卡片按钮 */}
               <div
                 className="bg-gray-800 border border-dashed border-gray-600 rounded-md p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-750 hover:border-gray-500 transition-colors h-40"
@@ -620,7 +431,7 @@ const PlaygroundPage: React.FC = () => {
                 {activeFileForJs && (
                   <div className="bg-gray-800 px-3 py-1 border-b border-gray-700 text-xs">
                     <span>JavaScript output for: </span>
-                    <span className="font-medium">{files.find(f => f.id === activeFileForJs)?.name || 'Unknown file'}</span>
+                    <span className="font-medium">{files.find(f => f.id === activeFileForJs)?.path || 'Unknown file'}</span>
                     {files.length > 1 && (
                       <span className="ml-2 text-gray-400">(Click a file card to view its JavaScript output)</span>
                     )}
