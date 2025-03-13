@@ -2,9 +2,7 @@ import { type FC, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import boltts, {
-  compile,
-} from '/Users/zjk/w/gh/jkzing/bolt-ts/crates/wasm/pkg/bolt_ts_wasm.js';
+import boltts, { compile } from 'bolt_ts_wasm';
 import { EditorCard } from './EditorCard';
 import libFiles from './libs';
 import { type Document, useDocumentStore } from './state/document';
@@ -24,14 +22,12 @@ const PlaygroundPage: FC = () => {
   const store = useDocumentStore();
 
   const [output, setOutput] = useState<string>('');
-  const [jsOutput, setJsOutput] = useState<string>('');
+  const [jsOutput, setJsOutput] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'output' | 'js' | 'definitions'>(
     'output'
   );
-  const [activeFileForJs, setActiveFileForJs] = useState<string>(
-    store.documents[0].id
-  );
+  const [activeFile, setActiveFile] = useState<Document>(store.documents[0]);
   const [compilerOptions, setCompilerOptions] = useState<CompilerOptions>({
     target: 'ES2015',
     module: 'ESNext',
@@ -77,11 +73,15 @@ const PlaygroundPage: FC = () => {
     const compileFiles = Object.fromEntries(
       store.documents.map(f => [f.path, f.content])
     );
+
+    // add global lib files
     Object.assign(compileFiles, libFiles);
+
     type Output =
-      | Record<string, string>
+      | Map<string, string>
       | [string, [number, number], [number, number], number][];
     const output: Output = compile('/', compileFiles);
+
     if (Array.isArray(output)) {
       const msg = output
         .map(item => {
@@ -96,8 +96,8 @@ const PlaygroundPage: FC = () => {
         .join('\n');
       setOutput(msg);
     } else {
-      setOutput('no errors found');
-      // setJsOutput("hello world")
+      setOutput('No errors found');
+      setJsOutput(output);
     }
     setIsLoading(false);
   };
@@ -200,8 +200,8 @@ const PlaygroundPage: FC = () => {
                 <EditorCard
                   key={document.id}
                   document={document}
-                  active={activeTab === 'js' && activeFileForJs === document.id}
-                  onCardClick={() => {}}
+                  active={activeTab === 'js' && activeFile.id === document.id}
+                  onCardClick={() => setActiveFile(document)}
                   onFileRename={handleFileRename}
                   onFileDelete={handleFileDelete}
                   onFileUpdate={handleFileUpdate}
@@ -263,12 +263,11 @@ const PlaygroundPage: FC = () => {
 
             {activeTab === 'js' && (
               <div className="h-full">
-                {activeFileForJs && (
+                {activeFile && (
                   <div className="bg-gray-800 px-3 py-1 border-b border-gray-700 text-xs">
                     <span>JavaScript output for: </span>
                     <span className="font-medium">
-                      {store.documents.find(f => f.id === activeFileForJs)
-                        ?.path || 'Unknown file'}
+                      {activeFile.path || 'Unknown file'}
                     </span>
                     {store.documents.length > 1 && (
                       <span className="ml-2 text-gray-400">
@@ -287,7 +286,8 @@ const PlaygroundPage: FC = () => {
                   }}
                   showLineNumbers
                 >
-                  {jsOutput || t('jsWillAppearHere')}
+                  {jsOutput.get(activeFile.path.replace(/\.ts$/, '.js')) ||
+                    t('jsWillAppearHere')}
                 </SyntaxHighlighter>
               </div>
             )}

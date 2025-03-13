@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
+    "bolt_ts_wasm": "file:../bolt-ts/crates/wasm/pkg",
     "i18next": "^24.2.2",
     "i18next-browser-languagedetector": "^8.0.4",
     "monaco-editor": "^0.52.2",

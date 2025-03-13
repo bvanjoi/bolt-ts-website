@@ -11,6 +11,9 @@ importers:
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.52.2)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      bolt_ts_wasm:
+        specifier: file:../bolt-ts/crates/wasm/pkg
+        version: file:../bolt-ts/crates/wasm/pkg
       i18next:
         specifier: ^24.2.2
         version: 24.2.3(typescript@5.8.2)
@@ -351,6 +354,9 @@ packages:
   binary-extensions@2.3.0:
     resolution: {integrity: sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==}
     engines: {node: '>=8'}
+
+  bolt_ts_wasm@file:../bolt-ts/crates/wasm/pkg:
+    resolution: {directory: ../bolt-ts/crates/wasm/pkg, type: directory}
 
   brace-expansion@2.0.1:
     resolution: {integrity: sha512-XnAIvQ8eM+kC6aULx6wuQiwVsnzsi9d3WxzV3FpWTGA19F621kwdbsAcFKXgKUHZWsy+mY6iL1sHTxWEFCytDA==}
@@ -1245,6 +1251,8 @@ snapshots:
   balanced-match@1.0.2: {}
 
   binary-extensions@2.3.0: {}
+
+  bolt_ts_wasm@file:../bolt-ts/crates/wasm/pkg: {}
 
   brace-expansion@2.0.1:
     dependencies:
