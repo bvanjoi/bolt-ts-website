@@ -1,0 +1,5 @@
+function greetings(name: string): string {
+  return `Hello, ${name}`;
+}
+
+const s = greetings(1);
