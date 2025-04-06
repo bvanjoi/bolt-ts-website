@@ -6,6 +6,8 @@
 # Dist
 node_modules
 dist/
+test-results/
+playwright/.cache
 
 # IDE
 .vscode/*

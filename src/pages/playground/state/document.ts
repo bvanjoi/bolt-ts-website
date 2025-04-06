@@ -38,9 +38,7 @@ export const defaultDocuments: Document[] = [
     `{
   "compilerOptions": {
     "strict": true
-  },
-  "include": ["./index.ts"],
-  "exclude": ["node_modules"]
+  }
 }`,
     'json'
   ),
