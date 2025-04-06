@@ -1,11 +1,8 @@
-import { type FC, useEffect, useRef, useState } from 'react';
+import { type FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import boltts, { compile } from 'bolt_ts_wasm';
 import { EditorCard } from './EditorCard';
-import libFiles from './libs';
 import { type Document, useDocumentStore } from './state/document';
+import { useCompile, errorOutputFromCompileError } from './useCompile';
 
 interface CompilerOptions {
   target: string;
@@ -20,9 +17,13 @@ const PlaygroundPage: FC = () => {
   const { t } = useTranslation();
 
   const store = useDocumentStore();
+  const compileOutput = useCompile({
+    files: Object.fromEntries(store.documents.map(f => [f.path, f.content])),
+    cwd: '/',
+  });
 
-  const [output, setOutput] = useState<string>('');
-  const [jsOutput, setJsOutput] = useState<Map<string, string>>(new Map());
+  const [errorOutput, setErrorOutput] = useState<string>('');
+  // const [jsOutput, setJsOutput] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'output' | 'js' | 'definitions'>(
     'output'
@@ -30,11 +31,7 @@ const PlaygroundPage: FC = () => {
   const [activeFile, setActiveFile] = useState<Document>(store.documents[0]);
   const [compilerOptions, setCompilerOptions] = useState<CompilerOptions>({
     target: 'ES2015',
-    module: 'ESNext',
     strict: true,
-    esModuleInterop: true,
-    skipLibCheck: true,
-    forceConsistentCasingInFileNames: true,
   });
 
   const handleNewFile = () => {
@@ -44,6 +41,7 @@ const PlaygroundPage: FC = () => {
       'typescript'
     );
   };
+
   const handleFileUpdate = (document: Document, newContent: string) => {
     store.updateDocument(document, newContent);
   };
@@ -53,10 +51,6 @@ const PlaygroundPage: FC = () => {
   const handleFileDelete = (document: Document) => {
     store.deleteDocument(document);
   };
-
-  useEffect(() => {
-    boltts();
-  }, []);
 
   // Select a file for JS output view
   const selectFileForJsOutput = (fileId: string) => {
@@ -70,34 +64,12 @@ const PlaygroundPage: FC = () => {
   const runCompile = () => {
     setIsLoading(true);
 
-    const compileFiles = Object.fromEntries(
-      store.documents.map(f => [f.path, f.content])
-    );
-
-    // add global lib files
-    Object.assign(compileFiles, libFiles);
-
-    type Output =
-      | Map<string, string>
-      | [string, [number, number], [number, number], number][];
-    const output: Output = compile('/', compileFiles);
-
-    if (Array.isArray(output)) {
-      const msg = output
-        .map(item => {
-          const filename = item[0];
-          const startLine = item[1][0];
-          const startColumn = item[1][1];
-          const endLine = item[2][0];
-          const endColumn = item[2][1];
-          const code = item[3];
-          return `[${filename}:${startLine}:${startColumn}]: ${code}`;
-        })
-        .join('\n');
-      setOutput(msg);
+    if (Array.isArray(compileOutput)) {
+      const msg = compileOutput.map(errorOutputFromCompileError).join('\n');
+      setErrorOutput(msg);
     } else {
-      setOutput('No errors found');
-      setJsOutput(output);
+      setErrorOutput('No errors found');
+      // setJsOutput(output);
     }
     setIsLoading(false);
   };
@@ -235,7 +207,7 @@ const PlaygroundPage: FC = () => {
         {/* Right side - Output */}
         <div className="w-1/2 flex flex-col">
           <div className="bg-gray-800 flex">
-            {(['output', 'js', 'definitions'] as const).map(tab => (
+            {(['output'] as const).map(tab => (
               <button
                 key={tab}
                 className={`px-4 py-2 text-sm font-medium cursor-pointer ${activeTab === tab ? 'bg-gray-900 text-white' : 'text-gray-400 hover:bg-gray-700'}`}
@@ -249,9 +221,9 @@ const PlaygroundPage: FC = () => {
           <div className="flex-1 overflow-auto bg-gray-900 p-0">
             {activeTab === 'output' && (
               <div className="h-full">
-                {output ? (
+                {errorOutput ? (
                   <div className="p-4 font-mono text-sm whitespace-pre bg-[#1e1e1e]">
-                    {output}
+                    {errorOutput}
                   </div>
                 ) : (
                   <div className="flex h-full items-center justify-center text-gray-500">
@@ -261,7 +233,7 @@ const PlaygroundPage: FC = () => {
               </div>
             )}
 
-            {activeTab === 'js' && (
+            {/* {activeTab === 'js' && (
               <div className="h-full">
                 {activeFile && (
                   <div className="bg-gray-800 px-3 py-1 border-b border-gray-700 text-xs">
@@ -307,7 +279,7 @@ function greeting(name: string): string;
 function displayUser(user: User): string;`}
                 </pre>
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </div>
