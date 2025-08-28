@@ -1,239 +1,238 @@
-import { type FC, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { EditorCard } from './EditorCard';
-import { type Document, useDocumentStore } from './state/document';
-import { useCompile, errorOutputFromCompileError } from './useCompile';
+import { type FC, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { EditorCard } from './EditorCard'
+import { type Document, useDocumentStore } from './state/document'
+import { useCompile, errorOutputFromCompileError } from './useCompile'
 
 interface CompilerOptions {
-  target: string;
-  strict: boolean;
-  module?: string;
-  esModuleInterop?: boolean;
-  skipLibCheck?: boolean;
-  forceConsistentCasingInFileNames?: boolean;
+	target: string
+	strict: boolean
+	module?: string
+	esModuleInterop?: boolean
+	skipLibCheck?: boolean
+	forceConsistentCasingInFileNames?: boolean
 }
 
 const PlaygroundPage: FC = () => {
-  const { t } = useTranslation();
+	const { t } = useTranslation()
 
-  const store = useDocumentStore();
-  const compileOutput = useCompile({
-    files: Object.fromEntries(store.documents.map(f => [f.path, f.content])),
-    cwd: '/',
-  });
+	const store = useDocumentStore()
+	const files = Object.fromEntries(
+		store.documents.map(doc => [doc.path, doc.content]),
+	)
+	const compileOutput = useCompile({
+		files,
+		cwd: '/',
+	})
 
-  const [errorOutput, setErrorOutput] = useState<string>('');
-  // const [jsOutput, setJsOutput] = useState<Map<string, string>>(new Map());
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'output' | 'js' | 'definitions'>(
-    'output'
-  );
-  const [activeFile, setActiveFile] = useState<Document>(store.documents[0]);
-  const [compilerOptions, setCompilerOptions] = useState<CompilerOptions>({
-    target: 'ES2015',
-    strict: true,
-  });
+	const [errorOutput, setErrorOutput] = useState<string>('')
+	// const [jsOutput, setJsOutput] = useState<Map<string, string>>(new Map());
+	const [isLoading, setIsLoading] = useState<boolean>(false)
+	const [activeTab, setActiveTab] = useState<'output' | 'js' | 'definitions'>(
+		'output',
+	)
+	const [activeFile, setActiveFile] = useState<Document>(store.documents[0])
+	const [compilerOptions, setCompilerOptions] = useState<CompilerOptions>({
+		target: 'ES2015',
+		strict: true,
+	})
 
-  const handleNewFile = () => {
-    store.newDocument(
-      `/file${store.documents.length + 1}.ts`,
-      '',
-      'typescript'
-    );
-  };
+	const handleNewFile = () => {
+		store.newDocument(`/file${store.documents.length + 1}.ts`, '', 'typescript')
+	}
 
-  const handleFileUpdate = (document: Document, newContent: string) => {
-    store.updateDocument(document, newContent);
-  };
-  const handleFileRename = (document: Document, newName: string) => {
-    store.renameDocument(document, newName);
-  };
-  const handleFileDelete = (document: Document) => {
-    store.deleteDocument(document);
-  };
+	const handleFileUpdate = (document: Document, newContent: string) => {
+		store.updateDocument(document, newContent)
+	}
+	const handleFileRename = (document: Document, newName: string) => {
+		store.renameDocument(document, newName)
+	}
+	const handleFileDelete = (document: Document) => {
+		store.deleteDocument(document)
+	}
 
-  // Select a file for JS output view
-  const selectFileForJsOutput = (fileId: string) => {
-    // setActiveFileForJs(fileId);
-    // const file = files.find(f => f.id === fileId);
-    // if (file) {
-    //   generateJsOutput(file.content, fileId);
-    // }
-  };
+	// Select a file for JS output view
+	const selectFileForJsOutput = (fileId: string) => {
+		// setActiveFileForJs(fileId);
+		// const file = files.find(f => f.id === fileId);
+		// if (file) {
+		//   generateJsOutput(file.content, fileId);
+		// }
+	}
 
-  const runCompile = () => {
-    setIsLoading(true);
+	const runCompile = () => {
+		setIsLoading(true)
 
-    if (Array.isArray(compileOutput)) {
-      const msg = compileOutput.map(errorOutputFromCompileError).join('\n');
-      setErrorOutput(msg);
-    } else {
-      setErrorOutput('No errors found');
-      // setJsOutput(output);
-    }
-    setIsLoading(false);
-  };
+		if (Array.isArray(compileOutput)) {
+			const msg = compileOutput.map(errorOutputFromCompileError).join('\n')
+			setErrorOutput(msg)
+		} else {
+			setErrorOutput('No errors found')
+			// setJsOutput(output);
+		}
+		setIsLoading(false)
+	}
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      {/* Top toolbar */}
-      <div className="border-b border-gray-700 bg-gray-800 p-2 flex items-center justify-between">
-        <div className="flex items-center">
-          <h1 className="text-xl font-bold mr-6">{t('title')}</h1>
-          <div className="flex space-x-2">
-            <button
-              onClick={runCompile}
-              disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm flex items-center cursor-pointer"
-            >
-              {isLoading ? (
-                <span className="flex items-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  {t('running')}
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <svg
-                    className="mr-1 h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  {t('run')}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
+	return (
+		<div className="min-h-screen bg-gray-900 text-white flex flex-col">
+			{/* Top toolbar */}
+			<div className="border-b border-gray-700 bg-gray-800 p-2 flex items-center justify-between">
+				<div className="flex items-center">
+					<h1 className="text-xl font-bold mr-6">{t('title')}</h1>
+					<div className="flex space-x-2">
+						<button
+							onClick={runCompile}
+							disabled={isLoading}
+							className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm flex items-center cursor-pointer"
+						>
+							{isLoading ? (
+								<span className="flex items-center">
+									<svg
+										className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+									>
+										<circle
+											className="opacity-25"
+											cx="12"
+											cy="12"
+											r="10"
+											stroke="currentColor"
+											strokeWidth="4"
+										/>
+										<path
+											className="opacity-75"
+											fill="currentColor"
+											d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+										/>
+									</svg>
+									{t('running')}
+								</span>
+							) : (
+								<span className="flex items-center">
+									<svg
+										className="mr-1 h-4 w-4"
+										fill="none"
+										stroke="currentColor"
+										viewBox="0 0 24 24"
+										xmlns="http://www.w3.org/2000/svg"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+										/>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+										/>
+									</svg>
+									{t('run')}
+								</span>
+							)}
+						</button>
+					</div>
+				</div>
 
-        <div className="flex items-center space-x-3">
-          <button className="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-sm cursor-pointer">
-            {t('share')}
-          </button>
-        </div>
-      </div>
+				<div className="flex items-center space-x-3">
+					<button className="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-sm cursor-pointer">
+						{t('share')}
+					</button>
+				</div>
+			</div>
 
-      <div className="flex h-[calc(100vh-56px)]">
-        {/* Left side - File cards */}
-        <div className="w-1/2 flex flex-col border-r border-gray-700">
-          {/* Make scrolling explicitly enabled on this container */}
-          <div
-            className="flex-1 overflow-y-auto overflow-x-hidden p-4"
-            onWheel={e => {
-              // Ensure the wheel event properly scrolls this container
-              const container = e.currentTarget;
-              const { scrollTop, scrollHeight, clientHeight } = container;
+			<div className="flex h-[calc(100vh-56px)]">
+				{/* Left side - File cards */}
+				<div className="w-1/2 flex flex-col border-r border-gray-700">
+					{/* Make scrolling explicitly enabled on this container */}
+					<div
+						className="flex-1 overflow-y-auto overflow-x-hidden p-4"
+						onWheel={e => {
+							// Ensure the wheel event properly scrolls this container
+							const container = e.currentTarget
+							const { scrollTop, scrollHeight, clientHeight } = container
 
-              // Check if we're at the top or bottom of scroll
-              const isAtTop = scrollTop === 0;
-              const isAtBottom = scrollTop + clientHeight >= scrollHeight;
+							// Check if we're at the top or bottom of scroll
+							const isAtTop = scrollTop === 0
+							const isAtBottom = scrollTop + clientHeight >= scrollHeight
 
-              // Only prevent default if we can scroll in the direction of the wheel
-              if ((e.deltaY < 0 && !isAtTop) || (e.deltaY > 0 && !isAtBottom)) {
-                e.stopPropagation();
-              }
-            }}
-          >
-            <div className="space-y-4 pb-4">
-              {store.documents.map(document => (
-                <EditorCard
-                  key={document.id}
-                  document={document}
-                  active={activeTab === 'js' && activeFile.id === document.id}
-                  onCardClick={() => setActiveFile(document)}
-                  onFileRename={handleFileRename}
-                  onFileDelete={handleFileDelete}
-                  onFileUpdate={handleFileUpdate}
-                />
-              ))}
-              {/* 新增卡片按钮 */}
-              <div
-                className="bg-gray-800 border border-dashed border-gray-600 rounded-md p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-750 hover:border-gray-500 transition-colors h-40"
-                onClick={handleNewFile}
-              >
-                <svg
-                  className="h-10 w-10 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-                <span className="mt-2 text-gray-400">Add new file</span>
-              </div>
-            </div>
-          </div>
-        </div>
+							// Only prevent default if we can scroll in the direction of the wheel
+							if ((e.deltaY < 0 && !isAtTop) || (e.deltaY > 0 && !isAtBottom)) {
+								e.stopPropagation()
+							}
+						}}
+					>
+						<div className="space-y-4 pb-4">
+							{store.documents.map(document => (
+								<EditorCard
+									key={document.id}
+									document={document}
+									active={activeTab === 'js' && activeFile.id === document.id}
+									onCardClick={() => setActiveFile(document)}
+									onFileRename={handleFileRename}
+									onFileDelete={handleFileDelete}
+									onFileUpdate={handleFileUpdate}
+								/>
+							))}
+							{/* 新增卡片按钮 */}
+							<div
+								className="bg-gray-800 border border-dashed border-gray-600 rounded-md p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-750 hover:border-gray-500 transition-colors h-40"
+								onClick={handleNewFile}
+							>
+								<svg
+									className="h-10 w-10 text-gray-400"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+									xmlns="http://www.w3.org/2000/svg"
+								>
+									<path
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										strokeWidth={2}
+										d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+									/>
+								</svg>
+								<span className="mt-2 text-gray-400">Add new file</span>
+							</div>
+						</div>
+					</div>
+				</div>
 
-        {/* Right side - Output */}
-        <div className="w-1/2 flex flex-col">
-          <div className="bg-gray-800 flex">
-            {(['output'] as const).map(tab => (
-              <button
-                key={tab}
-                className={`px-4 py-2 text-sm font-medium cursor-pointer ${activeTab === tab ? 'bg-gray-900 text-white' : 'text-gray-400 hover:bg-gray-700'}`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {t(tab)}
-              </button>
-            ))}
-          </div>
+				{/* Right side - Output */}
+				<div className="w-1/2 flex flex-col">
+					<div className="bg-gray-800 flex">
+						{(['output'] as const).map(tab => (
+							<button
+								key={tab}
+								className={`px-4 py-2 text-sm font-medium cursor-pointer ${activeTab === tab ? 'bg-gray-900 text-white' : 'text-gray-400 hover:bg-gray-700'}`}
+								onClick={() => setActiveTab(tab)}
+							>
+								{t(tab)}
+							</button>
+						))}
+					</div>
 
-          <div className="flex-1 overflow-auto bg-gray-900 p-0">
-            {activeTab === 'output' && (
-              <div className="h-full">
-                {errorOutput ? (
-                  <div className="p-4 font-mono text-sm whitespace-pre bg-[#1e1e1e]">
-                    {errorOutput}
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center text-gray-500">
-                    <p>{t('runToSeeResults')}</p>
-                  </div>
-                )}
-              </div>
-            )}
+					<div className="flex-1 overflow-auto bg-gray-900 p-0">
+						{activeTab === 'output' && (
+							<div className="h-full">
+								{errorOutput ? (
+									<div className="p-4 font-mono text-sm whitespace-pre bg-[#1e1e1e]">
+										{errorOutput}
+									</div>
+								) : (
+									<div className="flex h-full items-center justify-center text-gray-500">
+										<p>{t('runToSeeResults')}</p>
+									</div>
+								)}
+							</div>
+						)}
 
-            {/* {activeTab === 'js' && (
+						{/* {activeTab === 'js' && (
               <div className="h-full">
                 {activeFile && (
                   <div className="bg-gray-800 px-3 py-1 border-b border-gray-700 text-xs">
@@ -280,11 +279,11 @@ function displayUser(user: User): string;`}
                 </pre>
               </div>
             )} */}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+					</div>
+				</div>
+			</div>
+		</div>
+	)
+}
 
-export default PlaygroundPage;
+export default PlaygroundPage
